@@ -101,7 +101,7 @@ public:
     bool HasQuestDrop(LootTemplateMap const& store) const;  // True if group includes at least 1 quest drop entry
     bool HasQuestDropForPlayer(Player const* player, LootTemplateMap const& store) const;
     // The same for active quests of the player
-    void Process(Loot& loot, Player const* player, LootStore const& lootstore, uint16 lootMode, uint16 nonRefIterationsLeft) const;    // Rolls an item from the group (if any) and adds the item to the loot
+    void Process(Loot& loot, Player const* player, LootStore const& lootstore, uint16 lootMode, uint16 nonRefIterationsLeft, bool isBoss = false) const;    // Rolls an item from the group (if any) and adds the item to the loot
     float RawTotalChance() const;                       // Overall chance for the group (without equal chanced items)
     float TotalChance() const;                          // Overall chance for the group
 
@@ -537,7 +537,7 @@ void Loot::AddItem(LootStoreItem const& item)
 }
 
 // Calls processor of corresponding LootTemplate (which handles everything including references)
-bool Loot::FillLoot(uint32 lootId, LootStore const& store, Player* lootOwner, bool personal, bool noEmptyError, uint16 lootMode /*= LOOT_MODE_DEFAULT*/, WorldObject* lootSource /*= nullptr*/)
+bool Loot::FillLoot(uint32 lootId, LootStore const& store, Player* lootOwner, bool personal, bool noEmptyError, uint16 lootMode /*= LOOT_MODE_DEFAULT*/, WorldObject* lootSource /*= nullptr*/, bool isBoss /*= false*/)
 {
     // Must be provided
     if (!lootOwner)
@@ -1406,7 +1406,7 @@ void LootTemplate::LootGroup::CopyConditions(ConditionList /*conditions*/)
 }
 
 // Rolls an item from the group (if any takes its chance) and adds the item to the loot
-void LootTemplate::LootGroup::Process(Loot& loot, Player const* player, LootStore const& store, uint16 lootMode, uint16 nonRefIterationsLeft) const
+void LootTemplate::LootGroup::Process(Loot& loot, Player const* player, LootStore const& store, uint16 lootMode, uint16 nonRefIterationsLeft, bool isBoss) const
 {
     if (LootStoreItem const* item = Roll(loot, player, store, lootMode))
     {
@@ -1416,9 +1416,9 @@ void LootTemplate::LootGroup::Process(Loot& loot, Player const* player, LootStor
         {
             if (LootTemplate const* Referenced = LootTemplates_Reference.GetLootFor(std::abs(item->reference)))
             {
-                // Rate.Drop.Item.ReferencedAmount is only in effect inside dungeons and raids
+                // Rate.Drop.Item.ReferencedAmount is only in effect for dungeon boss loot
                 uint32 maxcount = item->maxcount;
-                if (player->GetMap()->IsDungeon() || player->GetMap()->IsRaid()) {
+                if (isBoss) {
                     maxcount = uint32(float(maxcount) * sWorld->getRate(RATE_DROP_ITEM_REFERENCED_AMOUNT))
                 }
 
@@ -1426,7 +1426,7 @@ void LootTemplate::LootGroup::Process(Loot& loot, Player const* player, LootStor
                 for (uint32 loop = 0; loop < maxcount; ++loop) // Ref multiplicator
                     // This reference needs to be processed further, but it is marked isTopLevel=false so that any groups inside
                     // the reference are not multiplied by Rate.Drop.Item.GroupAmount
-                    Referenced->Process(loot, store, lootMode, player, 0, false);
+                    Referenced->Process(loot, store, lootMode, player, 0, false, isBoss);
             }
         }
         else
@@ -1440,7 +1440,7 @@ void LootTemplate::LootGroup::Process(Loot& loot, Player const* player, LootStor
             // However, if this is a quest item we shouldn't multiply this group.
             if (nonRefIterationsLeft > 1 && !item->needs_quest)
             {
-                this->Process(loot, player, store, lootMode, nonRefIterationsLeft-1);
+                this->Process(loot, player, store, lootMode, nonRefIterationsLeft-1, isBoss);
             }
         }
     }
@@ -1669,7 +1669,7 @@ bool LootTemplate::CopyConditions(LootItem* li, uint32 conditionLootId) const
 }
 
 // Rolls for every item in the template and adds the rolled items the the loot
-void LootTemplate::Process(Loot& loot, LootStore const& store, uint16 lootMode, Player const* player, uint8 groupId, bool isTopLevel) const
+void LootTemplate::Process(Loot& loot, LootStore const& store, uint16 lootMode, Player const* player, uint8 groupId, bool isTopLevel, bool isBoss) const
 {
     bool rate = store.IsRatesAllowed();
 
@@ -1684,16 +1684,16 @@ void LootTemplate::Process(Loot& loot, LootStore const& store, uint16 lootMode, 
         // Rate.Drop.Item.GroupAmount is only in effect for the top loot template level
         if (isTopLevel)
         {
-            // Default amount of items to roll from the group is 1, but if the player is in a dungeon or raid, it can be increased by RATE_DROP_ITEM_GROUP_AMOUNT
+            // Default amount of items to roll from the group is 1, but if the source is a dungeon boss, it can be increased by RATE_DROP_ITEM_GROUP_AMOUNT
             uint32 groupAmount = 1;
-            if (player->GetMap()->IsDungeon() || player->GetMap()->IsRaid()) {
+            if (isBoss) {
                 groupAmount = sWorld->getRate(RATE_DROP_ITEM_GROUP_AMOUNT);
             }
-            Groups[groupId - 1]->Process(loot, player, store, lootMode, groupAmount);
+            Groups[groupId - 1]->Process(loot, player, store, lootMode, groupAmount, isBoss);
         }
         else
         {
-            Groups[groupId - 1]->Process(loot, player, store, lootMode, 0);
+            Groups[groupId - 1]->Process(loot, player, store, lootMode, 0, isBoss);
         }
         return;
     }
@@ -1713,16 +1713,16 @@ void LootTemplate::Process(Loot& loot, LootStore const& store, uint16 lootMode, 
             if (!Referenced)
                 continue;                                       // Error message already printed at loading stage
 
-            // Rate.Drop.Item.ReferencedAmount is only in effect inside dungeons and raids
+            // Rate.Drop.Item.ReferencedAmount is only in effect for dungeon bosses
             uint32 maxcount = item->maxcount;
-            if (player->GetMap()->IsDungeon() || player->GetMap()->IsRaid()) {
+            if (isBoss) {
                 maxcount = uint32(float(maxcount) * sWorld->getRate(RATE_DROP_ITEM_REFERENCED_AMOUNT));
             }
 
             sScriptMgr->OnAfterRefCount(player, loot, rate, lootMode, item, maxcount, store);
             for (uint32 loop = 0; loop < maxcount; ++loop)      // Ref multiplicator
                 // we're no longer in the top level, so isTopLevel is false
-                Referenced->Process(loot, store, lootMode, player, item->groupid, false);
+                Referenced->Process(loot, store, lootMode, player, item->groupid, false, isBoss);
         }
         else
         {
@@ -1739,17 +1739,17 @@ void LootTemplate::Process(Loot& loot, LootStore const& store, uint16 lootMode, 
             // Rate.Drop.Item.GroupAmount is only in effect for the top loot template level
             if (isTopLevel)
             {
-                // Default amount of items to roll from the group is 1, but if the player is in a dungeon or raid, it can be increased by RATE_DROP_ITEM_GROUP_AMOUNT
+                // Default amount of items to roll from the group is 1, but if the source is a dungeon boss, it can be increased by RATE_DROP_ITEM_GROUP_AMOUNT
                 uint32 groupAmount = 1;
-                if (player->GetMap()->IsDungeon() || player->GetMap()->IsRaid()) {
+                if (isBoss) {
                     groupAmount = sWorld->getRate(RATE_DROP_ITEM_GROUP_AMOUNT);
                 }
                 sScriptMgr->OnAfterCalculateLootGroupAmount(player, loot, lootMode, groupAmount, store);
-                group->Process(loot, player, store, lootMode, groupAmount);
+                group->Process(loot, player, store, lootMode, groupAmount, isBoss);
             }
             else
             {
-                group->Process(loot, player, store, lootMode, 0);
+                group->Process(loot, player, store, lootMode, 0, isBoss);
             }
         }
 }
