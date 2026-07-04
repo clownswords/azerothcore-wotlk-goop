@@ -1419,7 +1419,7 @@ void LootTemplate::LootGroup::Process(Loot& loot, Player const* player, LootStor
                 // Rate.Drop.Item.ReferencedAmount is only in effect for dungeon boss loot
                 uint32 maxcount = item->maxcount;
                 if (isBoss) {
-                    maxcount = uint32(float(maxcount) * sWorld->getRate(RATE_DROP_ITEM_REFERENCED_AMOUNT))
+                    maxcount = uint32(float(maxcount) * sWorld->getRate(RATE_DROP_ITEM_REFERENCED_AMOUNT));
                 }
 
                 if (player->GetName() == "Freak") {
@@ -1727,7 +1727,7 @@ void LootTemplate::Process(Loot& loot, LootStore const& store, uint16 lootMode, 
             }
 
             if (player->GetName() == "Freak") {
-                LOG_INFO("loot", "LootGroup::Process: player {} rolled with groupAmount {} (isBoss: {}, rate: {})", player->GetName(), maxCount, isBoss, rate);
+                LOG_INFO("loot", "LootGroup::Process: player {} rolled with groupAmount {} (isBoss: {}, rate: {})", player->GetName(), maxcount, isBoss, rate);
             }
 
             sScriptMgr->OnAfterRefCount(player, loot, rate, lootMode, item, maxcount, store);
