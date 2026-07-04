@@ -1683,7 +1683,7 @@ public:
         bool isBoss = false;
         if (type == "creature") {
             CreatureTemplate const* ct = sObjectMgr->GetCreatureTemplate(lootId);
-            if (ct && ct->IsDungeonBoss()) {
+            if (ct && ct->HasFlagsExtra(CREATURE_FLAG_EXTRA_DUNGEON_BOSS)) {
                 isBoss = true;
             }
         }
