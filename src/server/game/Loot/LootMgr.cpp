@@ -558,7 +558,7 @@ bool Loot::FillLoot(uint32 lootId, LootStore const& store, Player* lootOwner, bo
     quest_items.reserve(MAX_NR_QUEST_ITEMS);
 
     // Initial group is 0, top level set to True
-    tab->Process(*this, store, lootMode, lootOwner, 0, true);          // Processing is done there, callback via Loot::AddItem()
+    tab->Process(*this, store, lootMode, lootOwner, 0, true, isBoss);          // Processing is done there, callback via Loot::AddItem()
 
     sScriptMgr->OnAfterLootTemplateProcess(this, tab, store, lootOwner, personal, noEmptyError, lootMode);
 
@@ -1422,10 +1422,6 @@ void LootTemplate::LootGroup::Process(Loot& loot, Player const* player, LootStor
                     maxcount = uint32(float(maxcount) * sWorld->getRate(RATE_DROP_ITEM_REFERENCED_AMOUNT));
                 }
 
-                if (player->GetName() == "Freak") {
-                    LOG_INFO("loot", "LootGroup::Process: player {} rolled with maxcount {} (isBoss: {}, rate: {})", player->GetName(), maxcount, isBoss, rate);
-                }
-
                 sScriptMgr->OnAfterRefCount(player, loot, rate, lootMode, const_cast<LootStoreItem*>(item), maxcount, store);
                 for (uint32 loop = 0; loop < maxcount; ++loop) // Ref multiplicator
                     // This reference needs to be processed further, but it is marked isTopLevel=false so that any groups inside
@@ -1693,9 +1689,6 @@ void LootTemplate::Process(Loot& loot, LootStore const& store, uint16 lootMode, 
             if (isBoss) {
                 groupAmount = sWorld->getRate(RATE_DROP_ITEM_GROUP_AMOUNT);
             }
-            if (player->GetName() == "Freak") {
-                LOG_INFO("loot", "LootGroup::Process: player {} rolled with groupAmount {} (isBoss: {}, rate: {})", player->GetName(), groupAmount, isBoss, rate);
-            }
             Groups[groupId - 1]->Process(loot, player, store, lootMode, groupAmount, isBoss);
         }
         else
@@ -1726,10 +1719,6 @@ void LootTemplate::Process(Loot& loot, LootStore const& store, uint16 lootMode, 
                 maxcount = uint32(float(maxcount) * sWorld->getRate(RATE_DROP_ITEM_REFERENCED_AMOUNT));
             }
 
-            if (player->GetName() == "Freak") {
-                LOG_INFO("loot", "LootGroup::Process: player {} rolled with groupAmount {} (isBoss: {}, rate: {})", player->GetName(), maxcount, isBoss, rate);
-            }
-
             sScriptMgr->OnAfterRefCount(player, loot, rate, lootMode, item, maxcount, store);
             for (uint32 loop = 0; loop < maxcount; ++loop)      // Ref multiplicator
                 // we're no longer in the top level, so isTopLevel is false
@@ -1755,10 +1744,6 @@ void LootTemplate::Process(Loot& loot, LootStore const& store, uint16 lootMode, 
                 if (isBoss) {
                     groupAmount = sWorld->getRate(RATE_DROP_ITEM_GROUP_AMOUNT);
                 }
-                if (player->GetName() == "Freak") {
-                    LOG_INFO("loot", "LootGroup::Process: player {} rolled with groupAmount {} (isBoss: {}, rate: {})", player->GetName(), groupAmount, isBoss, rate);
-                }
-
                 sScriptMgr->OnAfterCalculateLootGroupAmount(player, loot, lootMode, groupAmount, store);
                 group->Process(loot, player, store, lootMode, groupAmount, isBoss);
             }
