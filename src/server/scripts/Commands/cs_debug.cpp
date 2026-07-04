@@ -1679,11 +1679,21 @@ public:
     static void GenerateLoot(Loot& loot, LootTemplate const* tab,
         LootStore const& store, Player* player, std::string const& type, uint32 lootId)
     {
+
+        bool isBoss = false;
+        if (type == "creature") {
+            CreatureTemplate const* ct = sObjectMgr->GetCreatureTemplate(lootId);
+            if (ct && ct->IsDungeonBoss()) {
+                isBoss = true;
+            }
+        }
+
         loot.clear();
         loot.items.reserve(MAX_NR_LOOT_ITEMS);
         loot.quest_items.reserve(MAX_NR_QUEST_ITEMS);
-        tab->Process(loot, store, LOOT_MODE_DEFAULT, player);
+        tab->Process(loot, store, LOOT_MODE_DEFAULT, player, 0, true, isBoss);
 
+        //Money calc
         if (type == "creature")
         {
             if (CreatureTemplate const* ct = sObjectMgr->GetCreatureTemplate(lootId))
