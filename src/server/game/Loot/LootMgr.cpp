@@ -1416,7 +1416,12 @@ void LootTemplate::LootGroup::Process(Loot& loot, Player const* player, LootStor
         {
             if (LootTemplate const* Referenced = LootTemplates_Reference.GetLootFor(std::abs(item->reference)))
             {
-                uint32 maxcount = uint32(float(item->maxcount) * sWorld->getRate(RATE_DROP_ITEM_REFERENCED_AMOUNT));
+                // Rate.Drop.Item.ReferencedAmount is only in effect inside dungeons and raids
+                uint32 maxcount = item->maxcount;
+                if (player->GetMap()->IsDungeon() || player->GetMap()->IsRaid()) {
+                    maxcount = uint32(float(maxcount) * sWorld->getRate(RATE_DROP_ITEM_REFERENCED_AMOUNT))
+                }
+
                 sScriptMgr->OnAfterRefCount(player, loot, rate, lootMode, const_cast<LootStoreItem*>(item), maxcount, store);
                 for (uint32 loop = 0; loop < maxcount; ++loop) // Ref multiplicator
                     // This reference needs to be processed further, but it is marked isTopLevel=false so that any groups inside
@@ -1679,7 +1684,12 @@ void LootTemplate::Process(Loot& loot, LootStore const& store, uint16 lootMode, 
         // Rate.Drop.Item.GroupAmount is only in effect for the top loot template level
         if (isTopLevel)
         {
-            Groups[groupId - 1]->Process(loot, player, store, lootMode, sWorld->getRate(RATE_DROP_ITEM_GROUP_AMOUNT));
+            // Default amount of items to roll from the group is 1, but if the player is in a dungeon or raid, it can be increased by RATE_DROP_ITEM_GROUP_AMOUNT
+            uint32 groupAmount = 1;
+            if (player->GetMap()->IsDungeon() || player->GetMap()->IsRaid()) {
+                groupAmount = sWorld->getRate(RATE_DROP_ITEM_GROUP_AMOUNT);
+            }
+            Groups[groupId - 1]->Process(loot, player, store, lootMode, groupAmount);
         }
         else
         {
@@ -1703,7 +1713,12 @@ void LootTemplate::Process(Loot& loot, LootStore const& store, uint16 lootMode, 
             if (!Referenced)
                 continue;                                       // Error message already printed at loading stage
 
-            uint32 maxcount = uint32(float(item->maxcount) * sWorld->getRate(RATE_DROP_ITEM_REFERENCED_AMOUNT));
+            // Rate.Drop.Item.ReferencedAmount is only in effect inside dungeons and raids
+            uint32 maxcount = item->maxcount;
+            if (player->GetMap()->IsDungeon() || player->GetMap()->IsRaid()) {
+                maxcount = uint32(float(maxcount) * sWorld->getRate(RATE_DROP_ITEM_REFERENCED_AMOUNT));
+            }
+
             sScriptMgr->OnAfterRefCount(player, loot, rate, lootMode, item, maxcount, store);
             for (uint32 loop = 0; loop < maxcount; ++loop)      // Ref multiplicator
                 // we're no longer in the top level, so isTopLevel is false
@@ -1724,7 +1739,11 @@ void LootTemplate::Process(Loot& loot, LootStore const& store, uint16 lootMode, 
             // Rate.Drop.Item.GroupAmount is only in effect for the top loot template level
             if (isTopLevel)
             {
-                uint32 groupAmount = sWorld->getRate(RATE_DROP_ITEM_GROUP_AMOUNT);
+                // Default amount of items to roll from the group is 1, but if the player is in a dungeon or raid, it can be increased by RATE_DROP_ITEM_GROUP_AMOUNT
+                uint32 groupAmount = 1;
+                if (player->GetMap()->IsDungeon() || player->GetMap()->IsRaid()) {
+                    groupAmount = sWorld->getRate(RATE_DROP_ITEM_GROUP_AMOUNT);
+                }
                 sScriptMgr->OnAfterCalculateLootGroupAmount(player, loot, lootMode, groupAmount, store);
                 group->Process(loot, player, store, lootMode, groupAmount);
             }
