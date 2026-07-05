@@ -3397,6 +3397,9 @@ float Creature::GetAggroRange(Unit const* target) const
     if (aggroRate == 0)
         return 0.0f;
 
+    if (IsDungeonBoss)
+        aggroRate = 1;
+
     auto creatureLevel = target->getLevelForTarget(this);
     auto playerLevel  = getLevelForTarget(target);
     int32 levelDiff = int32(creatureLevel) - int32(playerLevel);
@@ -3607,6 +3610,9 @@ float Creature::GetAttackDistance(Unit const* player) const
 
     if (!player)
         return 0.0f;
+
+    if (IsDungeonBoss())
+        aggroRate = 1;
 
     uint32 playerLevel = player->getLevelForTarget(this);
     uint32 creatureLevel = getLevelForTarget(player);
