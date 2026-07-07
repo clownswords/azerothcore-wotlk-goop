@@ -673,11 +673,10 @@ QuestItemList* Loot::FillQuestLoot(Player* player)
         if (!allowed && !isMasterLooter)
             continue;
 
-        ql->push_back(QuestItem(i));
-
         // Only add "allowed looter" if you are actually allowed to loot.
         if (allowed)
         {
+            ql->push_back(QuestItem(i));
             item.AddAllowedLooter(player);
 
             if (item.freeforall)
