@@ -3397,7 +3397,7 @@ float Creature::GetAggroRange(Unit const* target) const
     if (aggroRate == 0)
         return 0.0f;
 
-    if (IsDungeonBoss)
+    if (IsDungeonBoss())
         aggroRate = 1;
 
     auto creatureLevel = target->getLevelForTarget(this);
