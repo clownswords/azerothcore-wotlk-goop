@@ -513,10 +513,7 @@ void Object::BuildValuesUpdate(uint8 updateType, ByteBuffer* data, Player* targe
 void Object::AddToObjectUpdateIfNeeded()
 {
     if (m_inWorld && !m_objectUpdated)
-    {
-        AddToObjectUpdate();
-        m_objectUpdated = true;
-    }
+        m_objectUpdated = AddToObjectUpdate();        
 }
 
 void Object::ClearUpdateMask(bool remove)
@@ -2337,8 +2334,9 @@ TempSummon* Map::SummonCreature(uint32 entry, Position const& pos, SummonPropert
 
     summon->InitSummon();
 
-    // call MoveInLineOfSight for nearby creatures
-    Acore::AIRelocationNotifier notifier(*summon);
+    // call MoveInLineOfSight for nearby players and creatures; players are visited
+    // first (grid typelist order) so aggressive summons prefer them over pets/totems
+    Acore::AIRelocationNotifier notifier(*summon, true);
     Cell::VisitObjects(summon, notifier, GetVisibilityRange());
 
     return summon;
@@ -3114,9 +3112,10 @@ void WorldObject::GetCreaturesWithEntryInRange(std::list<Creature*>& creatureLis
     Cell::VisitObjects(this, searcher, radius);
 }
 
-void WorldObject::AddToObjectUpdate()
+bool WorldObject::AddToObjectUpdate()
 {
     GetMap()->AddUpdateObject(this);
+    return true;
 }
 
 void WorldObject::RemoveFromObjectUpdate()
